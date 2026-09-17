@@ -57,13 +57,16 @@ jobs:
 
       - name: Prune old releases
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Keep only the latest 10 releases
-          # gh release list returns releases sorted by date (newest first)
-          OLD_RELEASES=$(gh release list --limit 100 --json tagName --jq '.[10:] | .[].tagName')
-          
-          for tag in $OLD_RELEASES; do
+          # Keep only the latest 10 releases (newest first).
+          # gh --jq exits 1 when the slice is empty, so tolerate that.
+          tags=$(gh release list --limit 100 --json tagName --jq '.[10:] | .[].tagName' || true)
+          if [ -z "$tags" ]; then
+            echo "Nothing to prune (fewer than 11 releases)."
+            exit 0
+          fi
+          for tag in $tags; do
             echo "Deleting old release and tag: $tag"
             gh release delete "$tag" --yes --cleanup-tag
           done
