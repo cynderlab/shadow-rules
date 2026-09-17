@@ -1,0 +1,6 @@
+name: "Cloud Storage China"
+severity: 2
+feeds:
+  v2fly:
+    - category-cloud-storage-cn
+    - wenshushu

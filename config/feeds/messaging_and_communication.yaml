@@ -1,0 +1,5 @@
+name: "Messaging and Communication"
+feeds:
+  v2fly:
+    - category-communication
+    - protonmail

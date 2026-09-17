@@ -1,0 +1,71 @@
+name: Generate and Release Rules
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate Rules
+        run: python main.py
+
+      - name: Create unique tag
+        id: tag
+        run: |
+          TAG_NAME="v$(date +'%Y.%m.%d-%H%M%S')"
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          name: Shadow Rules ${{ steps.tag.outputs.tag_name }}
+          body: |
+            Automated release of Suricata shadow-it rules.
+            
+            Included files:
+            - Individual category files
+            - `all_shadow_rules.rules` (combined)
+          files: |
+            rules/*.rules
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prune old releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Keep only the latest 10 releases
+          # gh release list returns releases sorted by date (newest first)
+          OLD_RELEASES=$(gh release list --limit 100 --json tagName --jq '.[10:] | .[].tagName')
+          
+          for tag in $OLD_RELEASES; do
+            echo "Deleting old release and tag: $tag"
+            gh release delete "$tag" --yes --cleanup-tag
+          done

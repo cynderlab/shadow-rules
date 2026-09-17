@@ -1,0 +1,11 @@
+name: "Cloud Storage"
+feeds:
+  v2fly:
+    - dropbox
+    - mega
+    - terabox
+    - onedrive
+    - cowtransfer
+    - lanzou
+    - pikpak
+    - usersdrive

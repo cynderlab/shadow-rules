@@ -1,0 +1,342 @@
+name: "Insecure Protocols"
+custom_signatures:
+
+  # -------------------------------------------------------------------------
+  # SMB - SMBv1 (Legacy/Vulnerable) [app-layer: smb]
+  # Ports: 445 (SMB direct), 139 (SMB over NetBIOS)
+  # -------------------------------------------------------------------------
+  - name: "SMBv1 Support Detected during Negotiation (Client/Server has SMBv1 enabled)"
+    proto: "smb"
+    src: "any any"
+    dst: "any [139,445]"
+    options: 'flow:established; smb.version:1;'
+
+  # -------------------------------------------------------------------------
+  # SNMP - Resposta exitosa v1/v2c (implica auth OK sense xifrat)
+  # Bytes crus ASN.1: SEQUENCE(30) + version(02 01 XX) + GetResponse PDU(a2)
+  # Threshold: 1 alerta per parella origen-destí cada 1h (3600s)
+  # -------------------------------------------------------------------------
+  - name: "SNMP v1 Successful Access Detected"
+    proto: "udp"
+    src: "any 161"
+    dst: "any any"
+    # ASN.1: SEQUENCE + INTEGER version 0 (SNMPv1) + GetResponse PDU
+    options: 'content:"|30|"; depth:1; content:"|02 01 00|"; distance:0; within:10; content:"|a2|"; distance:0; within:40; threshold: type limit, track by_both, count 1, seconds 3600;'
+  - name: "SNMP v2c Successful Access Detected"
+    proto: "udp"
+    src: "any 161"
+    dst: "any any"
+    # ASN.1: SEQUENCE + INTEGER version 1 (SNMPv2c) + GetResponse PDU
+    options: 'content:"|30|"; depth:1; content:"|02 01 01|"; distance:0; within:10; content:"|a2|"; distance:0; within:40; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # -------------------------------------------------------------------------
+  # Telnet - IAC Negotiation
+  # Port: 23
+  # -------------------------------------------------------------------------
+  - name: "Telnet Cleartext IAC Negotiation"
+    proto: "telnet"
+    src: "any any"
+    dst: "any any"
+    options: 'flow:established; content:"|ff fb|"; depth:10;'
+
+  # -------------------------------------------------------------------------
+  # MySQL - Cleartext Authentication
+  # Port: 3306
+  # -------------------------------------------------------------------------
+  - name: "MySQL Cleartext Client HandshakeResponse (credentials exposed)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 3306"
+    # Byte 3: seq_id=1 (primer paquet del client)
+    # Offset 12-34: 23 reserved zero bytes (protocol 4.1+)
+    # Offset 35+: username (almenys un char no-nul) -> confirma HandshakeResponse, no SSLRequest
+    options: 'flow:established,to_server; content:"|01|"; offset:3; depth:1; content:"|00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00|"; offset:12; depth:23; pcre:"/^[^\x00]/R";'
+
+  # -------------------------------------------------------------------------
+  # PostgreSQL - Cleartext Authentication
+  # Port: 5432
+  # -------------------------------------------------------------------------
+  - name: "PostgreSQL Unencrypted login success"
+    proto: "pgsql"
+    src: "any any"
+    dst: "any any"
+    # R(0x52) + length(8) + AuthOk(0) = sessió autenticada en clar
+    options: 'flow:established,from_server; content:"|52 00 00 00 08 00 00 00 00|"; depth:20;'
+
+  # -------------------------------------------------------------------------
+  # MSSQL / TDS Protocol (cleartext)
+  # Port: 1433
+  # -------------------------------------------------------------------------
+  - name: "MSSQL Cleartext TDS Login7 Packet"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 1433"
+    # TDS packet type 0x10 = SQL Login, status 0x01 = EOM
+    options: 'flow:established,to_server; content:"|10 01|"; offset:0; depth:2; byte_test:2,>=,8,2,big;'
+
+  # -------------------------------------------------------------------------
+  # Redis - Cleartext Authentication
+  # Port: 6379
+  # -------------------------------------------------------------------------
+  - name: "Redis Cleartext AUTH RESP Protocol"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 6379"
+    # RESP Array: *2 (o *3 per AUTH user pass), seguit de $4 + AUTH
+    options: 'flow:established,to_server; content:"|2a|"; depth:1; content:"AUTH"; distance:0; within:20; nocase;'
+  - name: "Redis Cleartext AUTH Inline Command"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 6379"
+    # Format inline legacy: AUTH password\r\n
+    options: 'flow:established,to_server; content:"AUTH "; depth:5; nocase;'
+  - name: "Redis Cleartext PING (no TLS session)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 6379"
+    # Detecció genèrica de sessió Redis sense TLS: client envia PING
+    options: 'flow:established,to_server; content:"|2a 31 0d 0a 24 34 0d 0a|PING"; depth:16;'
+
+  # -------------------------------------------------------------------------
+  # MongoDB - Cleartext OP_MSG
+  # Port: 27017
+  # -------------------------------------------------------------------------
+  - name: "MongoDB Cleartext OP_MSG Request (no TLS)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 27017"
+    # requestID(4) + responseTo(4) + opCode(4) at offset 12
+    # OP_MSG = 2013 decimal = 0x07DD, little-endian = |DD 07 00 00|
+    options: 'flow:established,to_server; content:"|dd 07 00 00|"; offset:12; depth:4;'
+
+  # -------------------------------------------------------------------------
+  # VNC - RFB Cleartext Handshake
+  # -------------------------------------------------------------------------
+  - name: "VNC Cleartext RFB Handshake"
+    proto: "rfb"
+    src: "any any"
+    dst: "any any"
+    options: 'flow:established; content:"RFB 003."; depth:8;'
+
+  # -------------------------------------------------------------------------
+  # RDP sense NLA (Network Level Authentication)
+  # Port: 3389
+  # -------------------------------------------------------------------------
+  - name: "RDP Client Requested INSECURE Protocol (Downgrade/Bruteforce Attempt)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 3389"
+    # TPKT header (version 3) + x224 Connection Request (0xE0)
+    # RDP Negotiation Request: type=01, flags=00, length=08 00, requestedProtocols=00000000 (Standard RDP)
+    # within:255 to allow for variable-length RDP Cookie (mstshash) between X.224 CR and negotiation
+    options: 'flow:established,to_server; content:"|03 00|"; offset:0; depth:2; content:"|e0|"; distance:2; within:5; content:"|01 00 08 00|"; distance:0; within:255; content:"|00 00 00 00|"; distance:0; within:4;'
+  - name: "RDP Server ACCEPTED Standard Security (No NLA/TLS)"
+    proto: "tcp"
+    src: "any 3389"
+    dst: "any any"
+    # TPKT header + x224 Connection Confirm (0xD0)
+    # RDP Negotiation Response: type=02, flags=00, length=08 00, selectedProtocol=00000000 (Standard RDP)
+    # Matches |d0| without X.224 length byte for robustness (length can vary)
+    options: 'flow:established,from_server; content:"|03 00|"; offset:0; depth:2; content:"|d0|"; distance:2; within:5; content:"|02 00 08 00|"; distance:0; within:20; content:"|00 00 00 00|"; distance:0; within:4;'
+
+  # -------------------------------------------------------------------------
+  # rsh / rlogin (legacy Unix remote access)
+  # Ports: 513 (rlogin), 514 (rsh)
+  # -------------------------------------------------------------------------
+  - name: "rlogin Cleartext Session"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 513"
+    # rlogin: client envia null byte seguit de username\0remoteuser\0terminal\0
+    options: 'flow:established,to_server; content:"|00|"; offset:0; depth:1;'
+  - name: "rsh Cleartext Command Execution"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 514"
+    # rsh: similar pattern - stderr_port\0localuser\0remoteuser\0command\0
+    options: 'flow:established,to_server; content:"|00|"; depth:4;'
+
+  # -------------------------------------------------------------------------
+  # FTP - Login en clar [app-layer: ftp]
+  # -------------------------------------------------------------------------
+  - name: "FTP Cleartext USER Command"
+    proto: "ftp"
+    src: "any any"
+    dst: "any any"
+    options: 'flow:established,to_server; content:"USER "; nocase;'
+  - name: "FTP Cleartext PASS Command"
+    proto: "ftp"
+    src: "any any"
+    dst: "any any"
+    options: 'flow:established,to_server; content:"PASS "; nocase;'
+
+  # -------------------------------------------------------------------------
+  # SMTP Cleartext AUTH Command [app-layer: smtp]
+  # -------------------------------------------------------------------------
+  - name: "SMTP Cleartext AUTH Command"
+    proto: "smtp"
+    src: "any any"
+    dst: "any any"
+    options: 'flow:established,to_server; content:"AUTH "; nocase;'
+
+  # -------------------------------------------------------------------------
+  # LDAP Cleartext Simple Bind
+  # BER: SEQUENCE(30) + msgID + BindRequest app tag (60) + version(02 01 03=LDAPv3) + DN + Simple auth(80)
+  # Tag 80 = context-specific, primitive, tag 0 = Simple authentication (password en clar)
+  # Threshold: 1 alerta per parella origen-destí cada 1h (3600s)
+  # -------------------------------------------------------------------------
+  # 1. DETECCIÓ DE CONTRASENYA EN CLAR (Simple Bind)
+  # Busquem la seqüència: Sequence(30) -> BindRequest(60) -> Simple Auth Tag(80)
+  - name: "LDAP Cleartext Simple Bind (Password Exposed)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any [389,3268]"
+    priority: 2
+    severity: 2
+    options: 'flow:established,to_server; content:"|30|"; depth:1; content:"|60|"; distance:1; within:10; content:"|80|"; distance:0; within:128; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # 2. DETECCIÓ DE CONNEXIÓ SENSE XIFRAR (Canal Insegur)
+  # Aquesta salta encara que l'autenticació sigui segura (GSSAPI/Kerberos), perquè detecta qualsevol petició LDAP al port 389/3268 sense TLS.
+  - name: "LDAP Unencrypted Session (Data Exposure Risk)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any [389,3268]"
+    # Només detectem que hi ha una petició de Bind (60) al canal no xifrat.
+    options: 'flow:established,to_server; content:"|30|"; depth:1; content:"|60|"; distance:1; within:10; threshold: type limit, track by_both, count 1, seconds 3600;'
+  # -------------------------------------------------------------------------
+  # POP3 Cleartext
+  # Port: 110
+  # -------------------------------------------------------------------------
+  - name: "POP3 Cleartext PASS Command"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 110"
+    options: 'flow:established,to_server; content:"PASS "; offset:0; depth:5; nocase;'
+  - name: "POP3 Cleartext USER Command"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 110"
+    options: 'flow:established,to_server; content:"USER "; offset:0; depth:5; nocase;'
+
+  # -------------------------------------------------------------------------
+  # IMAP Cleartext
+  # Port: 143
+  # -------------------------------------------------------------------------
+  - name: "IMAP Cleartext LOGIN Command"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 143"
+    # fast_pattern en " LOGIN " per accelerar el MPM abans del regex
+    options: 'flow:established,to_server; content:" LOGIN "; fast_pattern; pcre:"/^\S+ LOGIN /mi"; nocase;'
+  - name: "IMAP Cleartext AUTHENTICATE PLAIN"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 143"
+    # Detecta auth SASL PLAIN (credencials en base64 sense xifrar)
+    options: 'flow:established,to_server; content:" AUTHENTICATE PLAIN"; fast_pattern; pcre:"/^\S+ AUTHENTICATE PLAIN/mi"; nocase;'
+
+  # -------------------------------------------------------------------------
+  # HTTP Cleartext - AUDIT PACK (Credentials & Sessions)
+  # Objectiu: Visibilitat total de credencials i seguretat de sessió en clar.
+  # -------------------------------------------------------------------------
+
+  # Credencials dins del cos (POST) - Deep Scan
+  - name: "HTTP Cleartext Credentials in POST Body"
+    proto: "http"
+    src: "any any"
+    dst: "any any"
+    # Ampliat a 'any' per caçar logins a routers/impressores/ERPs interns
+    options: 'flow:established,to_server; http.method; content:"POST"; http.request_body; pcre:"/(pass|pwd|user|login|email|token|secret|key|auth)[-_]?(name|word|id|val|code)?\s*[:=]\s*\S+/mi"; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # Credencials a la URL (GET)
+  - name: "HTTP Cleartext GET with credentials in URL"
+    proto: "http"
+    src: "any any"
+    dst: "any any"
+    options: 'flow:established,to_server; http.method; content:"GET"; http.uri; pcre:"/[?&](passw|pwd|token|api_key|apikey|secret|auth)[-_]?(name|word|id|val|code)?=/i"; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # Auth Headers insegurs (Basic, Bearer, NTLM, Kerberos)
+  # Threshold: 1 alerta per parella origen-destí cada 1h (3600s)
+  - name: "HTTP Cleartext Basic Authentication"
+    proto: "http"
+    src: "any any"
+    dst: "any any"
+    options: 'flow:established,to_server; http.header; content:"Authorization|3a 20|Basic"; nocase; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  - name: "HTTP Cleartext Bearer Token (JWT/OAuth)"
+    proto: "http"
+    src: "any any"
+    dst: "any any"
+    options: 'flow:established,to_server; http.header; content:"Authorization|3a 20|Bearer"; nocase; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  - name: "HTTP Cleartext NTLM Authentication"
+    proto: "http"
+    src: "any any"
+    dst: "any any"
+    options: 'flow:established,to_server; http.header; content:"Authorization|3a 20|NTLM"; nocase; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  - name: "HTTP Cleartext Negotiate/Kerberos Authentication"
+    proto: "http"
+    src: "any any"
+    dst: "any any"
+    options: 'flow:established,to_server; http.header; content:"Authorization|3a 20|Negotiate"; nocase; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # -------------------------------------------------------------------------
+  # TFTP - Trivial File Transfer Protocol
+  # Port: 69
+  # NOU v2: Zero autenticació/xifrat. Usat per firmwares, configs de switches.
+  # -------------------------------------------------------------------------
+  - name: "TFTP Read Request (firmware/config download, no auth)"
+    proto: "udp"
+    src: "any any"
+    dst: "any 69"
+    # Opcode 1 = RRQ
+    options: 'content:"|00 01|"; offset:0; depth:2;'
+  - name: "TFTP Write Request (firmware/config upload, no auth)"
+    proto: "udp"
+    src: "any any"
+    dst: "any 69"
+    # Opcode 2 = WRQ
+    options: 'content:"|00 02|"; offset:0; depth:2;'
+
+  # -------------------------------------------------------------------------
+  # SIP - Session Initiation Protocol (VoIP sense TLS)
+  # NOU v2: VoIP en clar, interceptable.
+  # Threshold: 1 alerta per parella origen-destí cada 1h (3600s)
+  # -------------------------------------------------------------------------
+  - name: "SIP Cleartext INVITE (VoIP call setup)"
+    proto: "sip"
+    src: "any any"
+    dst: "any any"
+    options: 'sip.method; content:"INVITE"; threshold: type limit, track by_both, count 1, seconds 3600;'
+  - name: "SIP Cleartext REGISTER (VoIP registration)"
+    proto: "sip"
+    src: "any any"
+    dst: "any any"
+    options: 'sip.method; content:"REGISTER"; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # -------------------------------------------------------------------------
+  # NFS - Network File System (AUTH_SYS = sense Kerberos)
+  # Port: 2049
+  # Cadena relativa: RPC v2 → NFS program (100003) → skip Version+Procedure (8 bytes) → AUTH_SYS (1)
+  # -------------------------------------------------------------------------
+  - name: "NFS Insecure AUTH_SYS Detected (No Kerberos)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 2049"
+    options: 'flow:established,to_server; content:"|00 00 00 02|"; content:"|00 01 86 a3|"; distance:0; within:4; content:"|00 00 00 01|"; distance:8; within:4;'
+
+# -------------------------------------------------------------------------
+  # Syslog Cleartext (UDP/TCP)
+  # -------------------------------------------------------------------------
+  - name: "Syslog Cleartext Detected (UDP)"
+    proto: "udp"
+    src: "any any"
+    dst: "any [514,1514]"
+    options: 'content:"<"; depth:5; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  - name: "Syslog Cleartext Detected (TCP)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any [514,1514]"
+    options: 'flow:established,to_server; content:"<"; depth:10; threshold: type limit, track by_both, count 1, seconds 3600;'

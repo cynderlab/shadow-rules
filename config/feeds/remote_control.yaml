@@ -1,0 +1,81 @@
+name: "Remote Control"
+manual_domains:
+  - name: TeamViewer
+    domains:
+      - teamviewer.com
+  - name: AnyDesk
+    domains:
+      - anydesk.com
+  - name: Chrome Remote Desktop
+    domains:
+      - full:remotedesktop.google.com
+      - talkgadget.google.com
+  - name: LogMeIn
+    domains:
+      - logmein.com
+      - logmeinrescue.com
+  - name: Splashtop
+    domains:
+      - splashtop.com
+      - splashtop.eu
+  - name: VNC Connect
+    domains:
+      - realvnc.com
+      - vnc.com
+  - name: RemotePC
+    domains:
+      - remotepc.com
+  - name: Zoho Assist
+    domains:
+      - zohoassist.com
+      - full:assist.zoho.com
+  - name: DWService
+    domains:
+      - dwservice.net
+  - name: ScreenConnect
+    domains:
+      - screenconnect.com
+      - connectwise.com
+  - name: Ammyy Admin
+    domains:
+      - ammyy.com
+  - name: Microsoft Quick Assist
+    domains:
+      - full:remoteassistance.support.services.microsoft.com
+  - name: Microsoft Intune
+    domains:
+      - manage.microsoft.com
+      - manage-beta.microsoft.com
+      - dm.microsoft.com
+  - name: RustDesk
+    domains:
+      - rustdesk.com
+  - name: NoMachine
+    domains:
+      - nomachine.com
+  - name: Supremo
+    domains:
+      - supremocontrol.com
+  - name: ISL Online
+    domains:
+      - islonline.com
+  - name: Mikogo
+    domains:
+      - mikogo.com
+  - name: Parsec
+    domains:
+      - parsecgaming.com
+  - name: BeyondTrust
+    domains:
+      - bomgar.com
+      - beyondtrustcloud.com
+  - name: GoToMyPC
+    domains:
+      - gotomypc.com
+      - expertcity.com
+  - name: Dameware
+    domains:
+      - dameware.com
+  - name: Miradore
+    domains:
+      - gateway.miradore.com

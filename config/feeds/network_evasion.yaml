@@ -1,0 +1,6 @@
+name: "Network Evasion"
+feeds:
+  v2fly:
+    - category-proxy-tunnels
+    - category-vpnservices
+    - category-anticensorship

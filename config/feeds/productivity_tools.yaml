@@ -1,0 +1,8 @@
+name: "Productivity Tools"
+feeds:
+  v2fly:
+    - notion
+    - trello
+    - figma
+    - canva
+    - evernote

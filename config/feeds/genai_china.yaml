@@ -1,0 +1,5 @@
+name: "GenAI China"
+severity: 2
+feeds:
+  v2fly:
+    - category-ai-cn

@@ -1,0 +1,100 @@
+name: "Network Security Infrastructure"
+manual_domains:
+  - name: "Fortinet (FortiGate/FortiGuard)"
+    domains:
+      - update.fortiguard.net
+      - service.fortiguard.net
+      - globalfortiguard.com
+      - forticlient.forticloud.com
+
+  - name: "Palo Alto Networks (Cortex/Panorama)"
+    domains:
+      - updates.paloaltonetworks.com
+      - downloads.paloaltonetworks.com
+      - apicvs.paloaltonetworks.com
+      - threat-intel.paloaltonetworks.com
+      - register.paloaltonetworks.com
+
+  - name: "Cisco Systems (Secure Firewall/ASA)"
+    domains:
+      - updates.ironport.com
+      - cloudsso.cisco.com
+      - api.cisco.com
+      - sso.cisco.com
+      - address.cisco.com
+      - ftd.cisco.com
+
+  - name: "Check Point Software"
+    domains:
+      - updates.checkpoint.com
+      - cpro.checkpoint.com
+      - cp-en-rep.checkpoint.com
+
+  - name: "Juniper Networks (SRX/Sky)"
+    domains:
+      - update.juniper.net
+      - signatures.juniper.net
+      - sky.juniper.net
+      - ocsp.juniper.net
+
+  - name: "Sophos (XG/XGS Firewall)"
+    domains:
+      - dci.sophosupd.com
+      - sophosxl.com
+      - fw-update.sophos.com
+
+  - name: "WatchGuard Technologies"
+    domains:
+      - services.watchguard.com
+      - update.watchguard.com
+
+  - name: "SonicWall"
+    domains:
+      - software.sonicwall.com
+      - service.sonicwall.com
+
+  - name: "Forcepoint"
+    domains:
+      - download.forcepoint.com
+      - update.forcepoint.net
+
+  - name: "Barracuda Networks"
+    domains:
+      - updates.barracuda.com
+      - d.barracudanetworks.com
+
+  - name: "F5 Networks"
+    domains:
+      - callhome.f5.com
+      - activate.f5.com
+
+  - name: "Zscaler"
+    domains:
+      - gateway.zscaler.net
+      - mobile.zscaler.net
+      - api.zscaler.net
+      - config.zscaler.net
+
+  - name: "Trend Micro (TippingPoint/Deep Discovery)"
+    domains:
+      - iau.trendmicro.com
+      - pattern.trendmicro.com
+
+  - name: "Huawei Technologies (USG)"
+    domains:
+      - update.huawei.com
+      - sec.huawei.com
+
+  - name: "Hillstone Networks"
+    domains:
+      - update.hillstonenet.com
+
+  - name: "Sangfor Technologies"
+    domains:
+      - update.sangfor.com.cn
+
+  - name: "MikroTik"
+    domains:
+      - upgrade.mikrotik.com
+      - cloud.mikrotik.com
+      - cloud2.mikrotik.com

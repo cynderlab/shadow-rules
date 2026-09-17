@@ -1,0 +1,5 @@
+name: "Development Infrastructure China"
+severity: 2
+feeds:
+  v2fly:
+    - category-dev-cn

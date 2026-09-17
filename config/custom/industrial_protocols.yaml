@@ -1,0 +1,377 @@
+name: "Industrial Protocols"
+manual_domains: []
+custom_signatures:
+
+  # -------------------------------------------------------------------------
+  # Siemens S7comm (port 102)
+  # =========================================================================
+  - name: "Siemens S7comm over TPKT"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 102"
+    # TPKT version 3 + S7 protocol ID (0x32) dins del payload
+    options: 'flow:established,to_server; content:"|03 00|"; offset:0; depth:2; content:"|32|"; distance:5; within:15;'
+  - name: "Siemens S7comm Response"
+    proto: "tcp"
+    src: "any 102"
+    dst: "any any"
+    options: 'flow:established,from_server; content:"|03 00|"; offset:0; depth:2; content:"|32|"; distance:5; within:15;'
+  - name: "COTP Connection Request to port 102 (S7/MMS/ICCP setup)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 102"
+    # TPKT version 3 + COTP CR (Connection Request) PDU type = 0xE0
+    options: 'flow:established,to_server; content:"|03 00|"; offset:0; depth:2; content:"|e0|"; distance:3; within:5;'
+
+  # -------------------------------------------------------------------------
+  # ICCP / TASE.2 (port 102, MMS-based)
+  # -------------------------------------------------------------------------
+  - name: "MMS/ICCP over TPKT (non-S7 industrial)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 102"
+    # TPKT header + COTP DT (Data Transfer) type = 0xF0
+    # Sense S7 magic (|32|) → indica MMS/ICCP en comptes de S7comm
+    options: 'flow:established; content:"|03 00|"; offset:0; depth:2; content:"|f0|"; distance:3; within:5; content:!"|32|"; distance:0; within:15;'
+
+  # -------------------------------------------------------------------------
+  # Modbus TCP (port 502)
+  # -------------------------------------------------------------------------
+  - name: "Modbus TCP MBAP Session"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 502"
+    # MBAP: Protocol ID = 0x0000 a offset 2
+    options: 'flow:established,to_server; content:"|00 00|"; offset:2; depth:2;'
+  - name: "Modbus TCP Write Single Coil (FC 0x05)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 502"
+    # MBAP Protocol ID + Function Code 5 (Write Single Coil) = acció crítica
+    options: 'flow:established,to_server; content:"|00 00|"; offset:2; depth:2; content:"|05|"; offset:7; depth:1;'
+  - name: "Modbus TCP Write Multiple Registers (FC 0x10)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 502"
+    # FC 16 (0x10) = Write Multiple Registers = acció crítica
+    options: 'flow:established,to_server; content:"|00 00|"; offset:2; depth:2; content:"|10|"; offset:7; depth:1;'
+  - name: "Modbus TCP Force Listen Only Mode (FC 0x08 / Diagnostics)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 502"
+    # FC 8 = Diagnostics, pot forçar Listen Only Mode (DoS a esclaus)
+    options: 'flow:established,to_server; content:"|00 00|"; offset:2; depth:2; content:"|08|"; offset:7; depth:1;'
+
+  # -------------------------------------------------------------------------
+  # OPC-UA Binary Protocol (port 4840)
+  # -------------------------------------------------------------------------
+  - name: "OPC-UA Hello (connection setup)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 4840"
+    options: 'flow:established,to_server; content:"HEL"; offset:0; depth:3;'
+  - name: "OPC-UA OpenSecureChannel"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 4840"
+    options: 'flow:established,to_server; content:"OPN"; offset:0; depth:3;'
+  - name: "OPC-UA Message"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 4840"
+    options: 'flow:established,to_server; content:"MSG"; offset:0; depth:3;'
+
+  # -------------------------------------------------------------------------
+  # IEC 60870-5-104 (port 2404) - Power Grid / Utilities
+  # -------------------------------------------------------------------------
+  - name: "IEC-60870-5-104 APCI Session"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 2404"
+    # Start byte 0x68, seguit de length (1 byte)
+    options: 'flow:established; content:"|68|"; offset:0; depth:1;'
+  - name: "IEC-60870-5-104 STARTDT Act (activation)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 2404"
+    # U-frame STARTDT Act: start(68) + len(04) + control(07 00 00 00)
+    options: 'flow:established,to_server; content:"|68 04 07 00 00 00|"; offset:0; depth:6;'
+  - name: "IEC-60870-5-104 Interrogation Command"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 2404"
+    # TypeID 100 (0x64) = Interrogation Command (C_IC_NA_1)
+    # Start byte + length + I-frame control(4 bytes) + TypeID
+    options: 'flow:established,to_server; content:"|68|"; offset:0; depth:1; content:"|64|"; offset:6; depth:1;'
+
+  # -------------------------------------------------------------------------
+  # EtherNet/IP - CIP (Rockwell) TCP (port 44818)
+  # -------------------------------------------------------------------------
+  - name: "EtherNet/IP RegisterSession (Rockwell/CIP)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 44818"
+    # Command: RegisterSession = 0x0065 (little-endian: |65 00|)
+    options: 'flow:established,to_server; content:"|65 00|"; offset:0; depth:2;'
+  - name: "EtherNet/IP ListIdentity (Rockwell/CIP)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 44818"
+    # Command: ListIdentity = 0x0063 (LE: |63 00|)
+    options: 'flow:established,to_server; content:"|63 00|"; offset:0; depth:2;'
+  - name: "EtherNet/IP SendRRData (Rockwell/CIP)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 44818"
+    # Command: SendRRData = 0x006F (LE: |6f 00|)
+    options: 'flow:established,to_server; content:"|6f 00|"; offset:0; depth:2;'
+  - name: "EtherNet/IP SendUnitData (Rockwell/CIP)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 44818"
+    # Command: SendUnitData = 0x0070 (LE: |70 00|)
+    options: 'flow:established,to_server; content:"|70 00|"; offset:0; depth:2;'
+
+  # -------------------------------------------------------------------------
+  # EtherNet/IP - CIP UDP (port 2222) - Implicit I/O Messaging
+  # -------------------------------------------------------------------------
+  - name: "EtherNet/IP Implicit I/O (Rockwell/CIP) UDP"
+    proto: "udp"
+    src: "any any"
+    dst: "any 2222"
+    # CIP Sequence Count: primer parell de bytes + Item Count al payload
+    # Item Type ID 0x8002 (Connected Data Item) en LE: |02 80|
+    options: 'content:"|02 80|"; depth:20; threshold: type limit, track by_both, count 1, seconds 3600;'
+  - name: "EtherNet/IP ListIdentity UDP (Rockwell/CIP)"
+    proto: "udp"
+    src: "any any"
+    dst: "any 44818"
+    # ListIdentity (0x0063) també es pot enviar per UDP broadcast
+    options: 'content:"|63 00|"; offset:0; depth:2; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # -------------------------------------------------------------------------
+  # CODESYS Runtime (port 1200, configurable)
+  # -------------------------------------------------------------------------
+  - name: "CODESYS v2 Runtime Block Driver"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 1200"
+    # CODESYS v2 Block Driver magic bytes
+    options: 'flow:established,to_server; content:"|bb bb|"; offset:0; depth:2;'
+  - name: "CODESYS v3 Runtime (port 11740)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 11740"
+    # CODESYS v3 utilitza port 11740 per defecte
+    options: 'flow:established,to_server;'
+
+  # -------------------------------------------------------------------------
+  # ADS/AMS Beckhoff (port 48898)
+  # -------------------------------------------------------------------------
+  - name: "ADS/AMS Beckhoff TwinCAT"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 48898"
+    # AMS/TCP reserved bytes + length field (mínim 32 bytes AMS header)
+    # Validem reserved=0x0000 i length >= 32 (0x20)
+    options: 'flow:established,to_server; content:"|00 00|"; offset:0; depth:2; byte_test:4,>=,32,2,little;'
+
+  # -------------------------------------------------------------------------
+  # Omron FINS (port 9600 TCP/UDP)
+  # -------------------------------------------------------------------------
+  - name: "Omron FINS TCP"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 9600"
+    options: 'flow:established,to_server; content:"|46 49 4e 53|"; offset:0; depth:4;'
+  - name: "Omron FINS UDP Client Command"
+    proto: "udp"
+    src: "any any"
+    dst: "any 9600"
+    # ICF byte |80| = command from client, RSV=|00|
+    # Limitador: 1 alerta per parella origen-destí cada 1h (3600s)
+    options: 'content:"|80 00|"; offset:0; depth:2; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # =========================================================================
+  #  BLOC 2: BUILDING AUTOMATION
+  # =========================================================================
+
+  # -------------------------------------------------------------------------
+  # BACnet/IP (port 47808 UDP)
+  # -------------------------------------------------------------------------
+  - name: "BACnet/IP BVLL Session"
+    proto: "udp"
+    src: "any any"
+    dst: "any 47808"
+    # BVLL type byte
+    options: 'content:"|81|"; offset:0; depth:1; threshold: type limit, track by_both, count 1, seconds 3600;'
+  - name: "BACnet/IP Who-Is (device discovery)"
+    proto: "udp"
+    src: "any any"
+    dst: "any 47808"
+    # BVLL(81) + function + length + NPDU version(01) + ... + APDU Who-Is = unconfirmed(10) + service(08)
+    options: 'content:"|81|"; offset:0; depth:1; content:"|01|"; distance:2; within:3; content:"|10 08|"; distance:0; within:15; threshold: type limit, track by_both, count 1, seconds 3600;'
+  - name: "BACnet/IP WriteProperty (modification)"
+    proto: "udp"
+    src: "any any"
+    dst: "any 47808"
+    # Confirmed service WriteProperty = service choice 0x0F
+    options: 'content:"|81|"; offset:0; depth:1; content:"|01|"; distance:2; within:3; content:"|0f|"; distance:0; within:20; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # -------------------------------------------------------------------------
+  # KNXnet/IP (port 3671 UDP)
+  # -------------------------------------------------------------------------
+  - name: "KNXnet/IP Session"
+    proto: "udp"
+    src: "any any"
+    dst: "any 3671"
+    # Header length (06) + protocol version (10)
+    options: 'content:"|06 10|"; offset:0; depth:2; threshold: type limit, track by_both, count 1, seconds 3600;'
+  - name: "KNXnet/IP Tunnelling Request (device control)"
+    proto: "udp"
+    src: "any any"
+    dst: "any 3671"
+    # Header(06 10) + Service Type Tunnelling Request (04 20)
+    options: 'content:"|06 10 04 20|"; offset:0; depth:4; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # =========================================================================
+  #  BLOC 3: PROTOCOLS L2 (LIMITACIONS DOCUMENTADES)
+  # =========================================================================
+
+  # -------------------------------------------------------------------------
+  # EtherCAT (EtherType 0x88A4 - Layer 2)
+  # -------------------------------------------------------------------------
+  - name: "EtherCAT over UDP (EoE - rar en producció)"
+    proto: "udp"
+    src: "any any"
+    dst: "any 34980"
+    # EtherCAT mailbox: tipus + length
+    # NOTA: Match feble per la raresa del protocol sobre UDP.
+    options: 'content:!"|00 00 00 00 00 00 00 00|"; depth:8; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # -------------------------------------------------------------------------
+  # Profinet-IO (EtherType 0x8892 - Layer 2 per RT Class 2/3)
+  # -------------------------------------------------------------------------
+  - name: "Profinet CBA/RT Class 1 over UDP (DCE/RPC)"
+    proto: "udp"
+    src: "any any"
+    dst: "any 34962"
+    # DCE/RPC version 4: primer byte |04|
+    options: 'content:"|04|"; offset:0; depth:1; threshold: type limit, track by_both, count 1, seconds 3600;'
+  - name: "Profinet Context Manager over TCP"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 34964"
+    # Profinet CM uses DCE/RPC over TCP
+    options: 'flow:established,to_server; content:"|05|"; offset:0; depth:1;'
+
+  # -------------------------------------------------------------------------
+  # DNP3 - Distributed Network Protocol (SCADA / Utilities)
+  # -------------------------------------------------------------------------
+  - name: "DNP3 Session TCP (SCADA)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 20000"
+    # DNP3 start bytes
+    options: 'flow:established; content:"|05 64|"; offset:0; depth:2;'
+  - name: "DNP3 Session UDP (SCADA)"
+    proto: "udp"
+    src: "any any"
+    dst: "any 20000"
+    options: 'content:"|05 64|"; offset:0; depth:2; threshold: type limit, track by_both, count 1, seconds 3600;'
+  - name: "DNP3 Write Command (FC 0x02)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 20000"
+    # Start bytes + within data: Function Code 2 = Write
+    options: 'flow:established,to_server; content:"|05 64|"; offset:0; depth:2; content:"|02|"; offset:12; depth:1;'
+  - name: "DNP3 Direct Operate (FC 0x05)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 20000"
+    # FC 5 = Direct Operate (actuació immediata, molt crític)
+    options: 'flow:established,to_server; content:"|05 64|"; offset:0; depth:2; content:"|05|"; offset:12; depth:1;'
+  - name: "DNP3 Cold Restart (FC 0x0D)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 20000"
+    # FC 13 = Cold Restart (reinici del dispositiu = DoS)
+    options: 'flow:established,to_server; content:"|05 64|"; offset:0; depth:2; content:"|0d|"; offset:12; depth:1;'
+
+  # -------------------------------------------------------------------------
+  # Mitsubishi MELSEC-Q (port 5007)
+  # -------------------------------------------------------------------------
+  - name: "Mitsubishi MELSEC-Q over TCP"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 5007"
+    # MELSEC subheader: |57 00| (Binary) o "5000" (ASCII)
+    options: 'flow:established,to_server; content:"|57 00|"; offset:0; depth:2;'
+  - name: "Mitsubishi MELSEC-Q ASCII mode"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 5007"
+    options: 'flow:established,to_server; content:"5000"; offset:0; depth:4;'
+
+  # -------------------------------------------------------------------------
+  # GE SRTP - Service Request Transport Protocol (GE Fanuc PLCs)
+  # Port: 18245
+  # -------------------------------------------------------------------------
+  - name: "GE SRTP (Fanuc PLC)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 18245"
+    # SRTP: service request type al payload
+    options: 'flow:established,to_server;'
+
+  # -------------------------------------------------------------------------
+  # HART-IP (port 5094)
+  # -------------------------------------------------------------------------
+  - name: "HART-IP Session"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 5094"
+    # HART-IP version(1) + msg type(1) + msg id(1) + status(1)
+    # Version = 1
+    options: 'flow:established,to_server; content:"|01|"; offset:0; depth:1; threshold: type limit, track by_both, count 1, seconds 3600;'
+  - name: "HART-IP Session UDP"
+    proto: "udp"
+    src: "any any"
+    dst: "any 5094"
+    options: 'content:"|01|"; offset:0; depth:1; threshold: type limit, track by_both, count 1, seconds 3600;'
+
+  # -------------------------------------------------------------------------
+  # MQTT - IoT Message Protocol (sense TLS)
+  # Port: 1883 (cleartext)
+  # -------------------------------------------------------------------------
+  - name: "MQTT Cleartext CONNECT (IoT, no TLS)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 1883"
+    # MQTT CONNECT: fixed header byte 1 = 0x10, variable header = "MQTT"
+    options: 'flow:established,to_server; content:"|10|"; offset:0; depth:1; content:"MQTT"; distance:1; within:10;'
+  - name: "MQTT Cleartext PUBLISH (IoT data in cleartext)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 1883"
+    # PUBLISH: fixed header high nibble = 0x3 (0x30-0x3F depenent de flags)
+    # Busquem |3| al nibble alt del primer byte
+    options: 'flow:established,to_server; byte_test:1,&,0x30,0;'
+  - name: "MQTT Cleartext SUBSCRIBE (IoT topic subscription)"
+    proto: "tcp"
+    src: "any any"
+    dst: "any 1883"
+    # SUBSCRIBE: fixed header = 0x82
+    options: 'flow:established,to_server; content:"|82|"; offset:0; depth:1;'
+
+  # -------------------------------------------------------------------------
+  # CoAP - Constrained Application Protocol (IoT)
+  # Port: 5683 (UDP, cleartext) / 5684 (DTLS)
+  # -------------------------------------------------------------------------
+  - name: "CoAP Cleartext Request (IoT sensor)"
+    proto: "udp"
+    src: "any any"
+    dst: "any 5683"
+    # CoAP version 1: primer byte high nibble = 0x40 (version=1, 2 bits)
+    # Version 1 = |01| als primers 2 bits → byte & 0xC0 = 0x40
+    options: 'byte_test:1,&,0x40,0; byte_test:1,!&,0x80,0; threshold: type limit, track by_both, count 1, seconds 3600;'

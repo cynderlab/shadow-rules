@@ -1,0 +1,6 @@
+name: "Productivity Tools China"
+severity: 2
+feeds:
+  v2fly:
+    - category-collaborate-cn
+    - category-documents-cn

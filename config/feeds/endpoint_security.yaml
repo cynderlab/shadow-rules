@@ -1,0 +1,278 @@
+name: "Endpoint Security"
+manual_domains:
+  - name: "CrowdStrike"
+    domains:
+      - ts01-b.cloudink.io
+      - ts02-b.cloudink.io
+      - ts01-lx.cloudink.io
+      - ts02-lx.cloudink.io
+      - lf-etc-prod.cloudink.io
+      - logs.crowdstrike.com
+
+  - name: "Microsoft Defender / ATP"
+    domains:
+      - unitedstates.x.cp.wd.microsoft.com
+      - us.vortex-win.data.microsoft.com
+      - us-v20.events.data.microsoft.com
+      - winatp-gw-cus.microsoft.com
+      - winatp-gw-eus.microsoft.com
+      - winatp-gw-cus3.microsoft.com
+      - winatp-gw-eus3.microsoft.com
+      - automatedirstrprdcus.blob.core.windows.net
+      - automatedirstrprdeus.blob.core.windows.net
+      - automatedirstrprdcus3.blob.core.windows.net
+      - automatedirstrprdeus3.blob.core.windows.net
+      - ussus1eastprod.blob.core.windows.net
+      - ussus2eastprod.blob.core.windows.net
+      - ussus3eastprod.blob.core.windows.net
+      - ussus4eastprod.blob.core.windows.net
+      - wsus1eastprod.blob.core.windows.net
+      - wsus2eastprod.blob.core.windows.net
+      - ussus1westprod.blob.core.windows.net
+      - ussus2westprod.blob.core.windows.net
+      - ussus3westprod.blob.core.windows.net
+      - ussus4westprod.blob.core.windows.net
+      - wsus1westprod.blob.core.windows.net
+      - wsus2westprod.blob.core.windows.net
+      - europe.x.cp.wd.microsoft.com
+      - eu.vortex-win.data.microsoft.com
+      - eu-v20.events.data.microsoft.com
+      - winatp-gw-neu.microsoft.com
+      - winatp-gw-weu.microsoft.com
+      - winatp-gw-neu3.microsoft.com
+      - winatp-gw-weu3.microsoft.com
+      - automatedirstrprdneu.blob.core.windows.net
+      - automatedirstrprdweu.blob.core.windows.net
+      - automatedirstrprdneu3.blob.core.windows.net
+      - automatedirstrprdweu3.blob.core.windows.net
+      - usseu1northprod.blob.core.windows.net
+      - wseu1northprod.blob.core.windows.net
+      - usseu1westprod.blob.core.windows.net
+      - wseu1westprod.blob.core.windows.net
+      - unitedkingdom.x.cp.wd.microsoft.com
+      - uk.vortex-win.data.microsoft.com
+      - uk-v20.events.data.microsoft.com
+      - winatp-gw-uks.microsoft.com
+      - winatp-gw-ukw.microsoft.com
+      - automatedirstrprduks.blob.core.windows.net
+      - automatedirstrprdukw.blob.core.windows.net
+      - ussuk1southprod.blob.core.windows.net
+      - wsuk1southprod.blob.core.windows.net
+      - ussuk1westprod.blob.core.windows.net
+      - wsuk1westprod.blob.core.windows.net
+      - australia.x.cp.wd.microsoft.com
+      - au.vortex-win.data.microsoft.com
+      - au-v20.events.data.microsoft.com
+      - winatp-gw-aue.microsoft.com
+      - winatp-gw-aus.microsoft.com
+      - automatedirstrprdaue.blob.core.windows.net
+      - automatedirstrprdaus.blob.core.windows.net
+      - ussau1southeastprod.blob.core.windows.net
+      - ussau1eastprod.blob.core.windows.net
+
+  - name: "Palo Alto Networks (Cortex XDR)"
+    domains:
+      - ch-prod-eu.traps.paloaltonetworks.com
+      - ch-prod-us.traps.paloaltonetworks.com
+      - log-collector.paloaltonetworks.com
+
+  - name: "SentinelOne"
+    domains:
+      - api.sentinelone.net
+      - dv.sentinelone.net
+      - s1next.com
+
+  - name: "Sophos"
+    domains:
+      - dci.sophosupd.com
+      - sus.sophosupd.com
+      - mcs-cloudserver-eu-central-1.sophos.com
+      - mcs-cloudserver-eu-central-2.sophos.com
+      - mcs-cloudserver-eu-west-1.sophos.com
+      - mcs-cloudserver-eu-west-2.sophos.com
+      - mcs-cloudserver-us-east-1.sophos.com
+      - mcs-cloudserver-us-east-2.sophos.com
+      - mcs-cloudserver-us-west-1.sophos.com
+      - mcs-cloudserver-us-west-2.sophos.com
+
+  - name: "Trend Micro"
+    domains:
+      - grid-global.trendmicro.com
+      - rest.trendmicro.com
+      - files.trendmicro.com
+      - iau.trendmicro.com
+      - xdr.trendmicro.com
+      - osce7-en.url.trendmicro.com
+
+  - name: "Symantec / Broadcom"
+    domains:
+      - ent-shavar.broadcom.com
+      - definitions.symantec.com
+      - central.securitycloud.com
+      - avts.ws.symantec.com
+
+  - name: "Cisco Secure Endpoint (AMP)"
+    domains:
+      - cloud-sa.amp.cisco.com
+      - export.amp.cisco.com
+      - intel.amp.cisco.com
+      - console.amp.cisco.com
+      - panacea.amp.cisco.com
+
+  - name: "Bitdefender"
+    domains:
+      - nimbus.bitdefender.net
+      - cloud.bitdefender.net
+      - upgrade.bitdefender.com
+      - gravityzone.bitdefender.com
+
+  - name: "Fortinet (FortiClient)"
+    domains:
+      - fct-update.fortinet.net
+      - forticlient.forticloud.com
+      - fct-cloud.fortinet.net
+
+  - name: "Kaspersky"
+    domains:
+      - ksn-64.kaspersky-labs.com
+      - dnl-all.kaspersky-labs.com
+      - upd.kaspersky.com
+
+  - name: "ESET"
+    domains:
+      - update.eset.com
+      - edf.eset.com
+      - exp02.eset.com
+      - repository.eset.com
+
+  - name: "Trellix / McAfee"
+    domains:
+      - su1.mcafee.com
+      - tau.mcafee.com
+      - ucl.mcafee.com
+      - agent.trellix.com
+      - cloud.trellix.com
+
+  - name: "Check Point (Harmony)"
+    domains:
+      - cloudinfra-gw.checkpoint.com
+      - updates.checkpoint.com
+      - cp-en-rep.checkpoint.com
+
+  - name: "Cybereason"
+    domains:
+      - pcre.cybereason.net
+      - collect.cybereason.net
+
+  - name: "VMware Carbon Black"
+    domains:
+      - devices.conferdeploy.net
+      - api.conferdeploy.net
+      - dev-test.conferdeploy.net
+
+  - name: "Elastic Security"
+    domains:
+      - artifacts.elastic.co
+      - ingest.elastic.co
+
+  - name: "Huntress"
+    domains:
+      - huntress.io
+      - update.huntress.io
+      - huntress-uploads.s3.amazonaws.com
+
+  - name: "BlackBerry / Cylance"
+    domains:
+      - venom.cylance.com
+      - protect.cylance.com
+      - update.cylance.com
+
+  - name: "Malwarebytes"
+    domains:
+      - telemetry.malwarebytes.com
+      - data-cdn.mbamupdates.com
+      - sirius.mwbsys.com
+
+  - name: "Acronis"
+    domains:
+      - cloud.acronis.com
+      - rpc.acronis.com
+
+  - name: "Cynet"
+    domains:
+      - api.cynet.com
+      - data.cynet.com
+      - telemetry.cynet.com
+      - distribution.cynet.com
+
+  - name: "Arctic Wolf"
+    domains:
+      - arcticwolf.com
+      - customer.arcticwolf.com
+
+  - name: "Avast"
+    domains:
+      - v7.stats.avast.com
+      - u-v7.stats.avast.com
+      - update.avast.com
+      - ff.avast.com
+      - shepherd.avast.com
+      - papi.avast.com
+      - avcdn.avast.com
+
+  - name: "Xcitium / Comodo"
+    domains:
+      - xcitium.com
+      - comodo.com
+      - cmdm.comodo.com
+
+  - name: "Deep Instinct"
+    domains:
+      - deepinstinct.com
+      - api.deepinstinct.com
+
+  - name: "Morphisec"
+    domains:
+      - morphisec.com
+      - api.morphisec.com
+
+  - name: "Coro"
+    domains:
+      - coro.net
+      - api.coro.net
+
+  - name: "IBM (ReaQta / MaaS360)"
+    domains:
+      - reaqta.com
+      - maas360.com
+
+  - name: "Vipre"
+    domains:
+      - vipreantivirus.com
+      - cloud.vipre.com
+
+  - name: "Securden"
+    domains:
+      - securden.com
+
+  - name: "Teramind"
+    domains:
+      - teramind.io
+
+  - name: "Corelight"
+    domains:
+      - corelight.com
+
+  - name: "Vectra AI"
+    domains:
+      - vectra.ai
+
+  - name: "Norton"
+    domains:
+      - update.symantecliveupdate.com
+      - liveupdate.symantec.com
+
+  - name: "Panda Security"
+    domains:
+      - cloudpanda.com
+      - pandasecurity.com

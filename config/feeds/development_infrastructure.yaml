@@ -1,0 +1,5 @@
+name: "Development Infrastructure"
+feeds:
+  v2fly:
+    - category-dev
+    - category-container

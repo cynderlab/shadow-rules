@@ -1,0 +1,20 @@
+include:
+  - feeds/genai.yaml
+  - feeds/genai_china.yaml
+  # - feeds/development_infrastructure.yaml
+  - feeds/development_infrastructure_china.yaml
+  - feeds/cloud_storage.yaml
+  - feeds/cloud_storage_china.yaml
+  - feeds/password_management.yaml
+  - feeds/network_evasion.yaml
+  - feeds/messaging_and_communication.yaml
+  # - feeds/productivity_tools.yaml
+  - feeds/productivity_tools_china.yaml
+  - feeds/remote_control.yaml
+  - feeds/endpoint_security.yaml
+  - feeds/network_security.yaml
+  #################################################
+  ################ Custom rules ###################
+  #################################################
+  - custom/insecure_protocols.yaml
+  - custom/industrial_protocols.yaml
