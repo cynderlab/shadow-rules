@@ -77,14 +77,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Keep only the latest 10 releases (newest first).
-          # gh --jq exits 1 when the slice is empty, so tolerate that.
-          tags=$(gh release list --limit 100 --json tagName --jq '.[10:] | .[].tagName' || true)
-          if [ -z "$tags" ]; then
-            echo "Nothing to prune (fewer than 11 releases)."
-            exit 0
-          fi
-          for tag in $tags; do
-            echo "Deleting old release and tag: $tag"
-            gh release delete "$tag" --yes --cleanup-tag
-          done
+          python3 - <<'PY'
+          import json, subprocess, sys
+
+          proc = subprocess.run(
+              ["gh", "release", "list", "--limit", "100", "--json", "tagName"],
+              check=True, capture_output=True, text=True,
+          )
+          tags = [item["tagName"] for item in json.loads(proc.stdout)]
+          old = tags[10:]
+          if not old:
+              print(f"Nothing to prune ({len(tags)} releases).")
+              sys.exit(0)
+          for tag in old:
+              print(f"Deleting old release and tag: {tag}")
+              subprocess.run(
+                  ["gh", "release", "delete", tag, "--yes", "--cleanup-tag"],
+                  check=True,
+              )
+          PY
