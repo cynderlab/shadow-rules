@@ -31,29 +31,47 @@ jobs:
       - name: Generate Rules
         run: python main.py
 
-      - name: Create unique tag
-        id: tag
-        run: |
-          TAG_NAME="v$(date +'%Y.%m.%d-%H%M%S')"
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          git tag $TAG_NAME
-          git push origin $TAG_NAME
-
       - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.tag_name }}
-          name: Shadow Rules ${{ steps.tag.outputs.tag_name }}
-          body: |
-            Automated release of Suricata shadow-it rules.
-            
-            Included files:
-            - Individual category files
-            - `all_shadow_rules.rules` (combined)
-          files: |
-            rules/*.rules
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          TAG_NAME="v$(date +'%Y.%m.%d-%H%M%S')"
+          shopt -s nullglob
+          files=(rules/*.rules)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No rules/*.rules generated" >&2
+            exit 1
+          fi
+
+          notes='Automated release of Suricata shadow-it rules.
+
+          Included files:
+          - Individual category files
+          - `all_shadow_rules.rules` (combined)'
+
+          # CLI instead of action-gh-release (Node 20 / Unicorn HTML on 500s).
+          publish() {
+            if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+              gh release upload "$TAG_NAME" "${files[@]}" --clobber
+            else
+              gh release create "$TAG_NAME" "${files[@]}" \
+                --title "Shadow Rules $TAG_NAME" \
+                --notes "$notes" \
+                --target "${GITHUB_SHA}"
+            fi
+          }
+
+          for attempt in 1 2 3 4 5; do
+            if publish; then
+              echo "Published $TAG_NAME"
+              exit 0
+            fi
+            echo "Release attempt ${attempt} failed; retrying..."
+            sleep $((attempt * 8))
+          done
+          echo "Failed to publish $TAG_NAME after retries" >&2
+          exit 1
 
       - name: Prune old releases
         env:
