@@ -72,27 +72,3 @@ jobs:
           done
           echo "Failed to publish $TAG_NAME after retries" >&2
           exit 1
-
-      - name: Prune old releases
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python3 - <<'PY'
-          import json, subprocess, sys
-
-          proc = subprocess.run(
-              ["gh", "release", "list", "--limit", "100", "--json", "tagName"],
-              check=True, capture_output=True, text=True,
-          )
-          tags = [item["tagName"] for item in json.loads(proc.stdout)]
-          old = tags[10:]
-          if not old:
-              print(f"Nothing to prune ({len(tags)} releases).")
-              sys.exit(0)
-          for tag in old:
-              print(f"Deleting old release and tag: {tag}")
-              subprocess.run(
-                  ["gh", "release", "delete", tag, "--yes", "--cleanup-tag"],
-                  check=True,
-              )
-          PY
