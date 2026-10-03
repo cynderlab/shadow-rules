@@ -2,6 +2,7 @@ from src.sid_manager import SidManager
 from src.generator import RuleGenerator
 from src.parser import DomainParser
 from src.models import DomainEntry
+from src.generator import QUIC_SID_OFFSET, DNS_SID_OFFSET
 
 
 def make_generator():
@@ -9,11 +10,19 @@ def make_generator():
     return RuleGenerator(sid_mgr), sid_mgr
 
 
+def by_proto(rules, proto):
+    return [r for r in rules if r.startswith(f"alert {proto} ")]
+
+
+def sid_of(rule):
+    return int(rule.split("sid:")[1].split(";")[0])
+
+
 class TestGenerateRules:
     def test_full_match_single_rule_with_bsize(self):
         gen, _ = make_generator()
         domain_entry = DomainEntry("exact.example.com", is_full=True)
-        rules = gen.generate_rules("TestCat", "TestSvc", domain_entry)
+        rules = by_proto(gen.generate_rules("TestCat", "TestSvc", domain_entry), "tls")
         assert len(rules) == 1
         assert 'bsize:' in rules[0]
         assert 'isdataat:' not in rules[0]
@@ -37,7 +46,7 @@ class TestGenerateRules:
     def test_non_full_generates_two_rules(self):
         gen, _ = make_generator()
         domain_entry = DomainEntry("tailscale.com")
-        rules = gen.generate_rules("Cat", "Svc", domain_entry)
+        rules = by_proto(gen.generate_rules("Cat", "Svc", domain_entry), "tls")
         assert len(rules) == 2
 
     def test_non_full_exact_match_rule(self):
@@ -130,13 +139,79 @@ class TestGenerateRules:
         rules = gen.generate_rules("Normal", "Svc", DomainEntry("a.com"))
         assert all("classtype:policy-violation" in r for r in rules)
 
-    def test_all_rules_use_tls_sni(self):
+    def test_tls_rules_use_tls_sni(self):
         gen, _ = make_generator()
         for entry in [DomainEntry("a.com"), DomainEntry("b.com", is_full=True)]:
             rules = gen.generate_rules("Cat", "Svc", entry)
-            for rule in rules:
-                assert rule.startswith("alert tls ")
+            for rule in by_proto(rules, "tls"):
                 assert "tls.sni;" in rule
+                assert "protocol tls;" in rule
+
+    def test_tls_rules_come_first(self):
+        """rules[0] and rules[1] stay the TLS exact and subdomain rules."""
+        gen, _ = make_generator()
+        rules = gen.generate_rules("Cat", "Svc", DomainEntry("a.com"))
+        assert [r.split(" ")[1] for r in rules] == ["tls", "tls", "quic", "quic", "dns", "dns"]
+
+
+class TestProtocolTwins:
+    """Every TLS rule has a QUIC and a DNS twin with the same matching."""
+
+    def test_each_tls_rule_has_quic_and_dns_twin(self):
+        gen, _ = make_generator()
+        for entry in [DomainEntry("a.com"), DomainEntry("b.com", is_full=True)]:
+            rules = gen.generate_rules("Cat", "Svc", entry)
+            assert len(by_proto(rules, "quic")) == len(by_proto(rules, "tls"))
+            assert len(by_proto(rules, "dns")) == len(by_proto(rules, "tls"))
+            assert len(rules) == 3 * len(by_proto(rules, "tls"))
+
+    def test_quic_twin_uses_quic_sni_and_same_msg(self):
+        gen, _ = make_generator()
+        rules = gen.generate_rules("GenAI", "Google Deepmind", DomainEntry("gemini.google.com"))
+        tls, quic = by_proto(rules, "tls"), by_proto(rules, "quic")
+        for t, q in zip(tls, quic):
+            assert q.startswith("alert quic $HOME_NET any -> $EXTERNAL_NET any ")
+            assert "quic.sni;" in q and "tls.sni" not in q
+            assert 'msg:"CYNDERLAB - GenAI - Google Deepmind";' in q
+            assert "protocol quic;" in q
+            assert t.split("sni;")[1].split("classtype")[0] == q.split("sni;")[1].split("classtype")[0]
+
+    def test_dns_twin_matches_query_with_own_msg_and_threshold(self):
+        gen, _ = make_generator()
+        rules = gen.generate_rules("GenAI", "Google Deepmind", DomainEntry("gemini.google.com"))
+        dns = by_proto(rules, "dns")
+        assert 'content:"gemini.google.com"; nocase; bsize:17;' in dns[0]
+        assert 'content:".gemini.google.com"; nocase; endswith;' in dns[1]
+        for d in dns:
+            # Clients ask an internal resolver: destination must not be $EXTERNAL_NET.
+            assert d.startswith("alert dns $HOME_NET any -> any any ")
+            assert "dns.query;" in d
+            assert 'msg:"CYNDERLAB - GenAI - Google Deepmind (DNS)";' in d
+            assert "threshold: type limit, track by_src, count 1, seconds 3600;" in d
+            assert "protocol dns;" in d
+
+    def test_twin_sids_are_tls_sid_plus_offset(self):
+        gen, _ = make_generator()
+        rules = gen.generate_rules("Cat", "Svc", DomainEntry("a.com"))
+        tls = [sid_of(r) for r in by_proto(rules, "tls")]
+        assert [sid_of(r) for r in by_proto(rules, "quic")] == [s + QUIC_SID_OFFSET for s in tls]
+        assert [sid_of(r) for r in by_proto(rules, "dns")] == [s + DNS_SID_OFFSET for s in tls]
+
+    def test_twins_do_not_consume_base_sids(self):
+        """Adding twins must not shift the SIDs of existing TLS rules."""
+        gen, mgr = make_generator()
+        gen.generate_rules("Cat", "Svc", DomainEntry("a.com"))
+        assert mgr.next_sid == 9002
+
+    def test_sid_reaching_twin_range_fails(self):
+        mgr = SidManager(start_sid=1000000 + QUIC_SID_OFFSET)
+        gen = RuleGenerator(mgr)
+        try:
+            gen.generate_rules("Cat", "Svc", DomainEntry("a.com"))
+        except ValueError as e:
+            assert "twin range" in str(e)
+        else:
+            raise AssertionError("expected ValueError")
 
     def test_unique_sids_across_rules(self):
         gen, _ = make_generator()
@@ -156,8 +231,9 @@ class TestProcessDomains:
         gen, _ = make_generator()
         domains = [DomainEntry("a.com"), DomainEntry("b.com"), DomainEntry("c.com", is_full=True)]
         rules = gen.process_domains("Cat", "Svc", domains)
-        # 2 non-full * 2 rules + 1 full * 1 rule = 5
-        assert len(rules) == 5
+        # (2 non-full * 2 rules + 1 full * 1 rule) * 3 protocols = 15
+        assert len(by_proto(rules, "tls")) == 5
+        assert len(rules) == 15
 
 
 class TestFullPrefixEndToEnd:
@@ -168,7 +244,7 @@ class TestFullPrefixEndToEnd:
         domains, _ = DomainParser.extract_domains(content)
 
         gen, _ = make_generator()
-        rules = gen.process_domains("Remote", "Chrome", domains)
+        rules = by_proto(gen.process_domains("Remote", "Chrome", domains), "tls")
 
         full_rules = [r for r in rules if "remotedesktop.google.com" in r]
         wild_rules = [r for r in rules if "talkgadget.google.com" in r]

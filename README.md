@@ -152,6 +152,20 @@ custom_signatures:
 *   **Standard**: `anydesk.com` matches the domain and all subdomains (uses `endswith`).
 *   **Exact (`full:`)**: `full:api.sentinelone.net` matches **only** that specific hostname (uses `bsize` and `isdataat`). Use this for telemetry endpoints to avoid false positives from web browsing.
 
+### Protocol Twins (TLS, QUIC, DNS)
+Every domain rule is emitted three times, once per protocol that exposes the hostname:
+
+| Protocol | Buffer | Why | SID |
+|---|---|---|---|
+| `tls` | `tls.sni` | HTTPS over TCP | `N` |
+| `quic` | `quic.sni` | HTTP/3: browsers send most Google, Meta and GenAI traffic over QUIC, which TLS rules never see | `N + 100000` |
+| `dns` | `dns.query` | Still visible when Encrypted Client Hello hides the SNI | `N + 200000` |
+
+*   QUIC twins keep the same `msg`, so a service is reported once whatever transport it used.
+*   DNS twins add ` (DNS)` to the `msg` and are limited to one alert per host per hour: a lookup is not proof of use (prefetching, embedded resources). Their destination is `any`, because clients usually ask an internal resolver.
+*   Twins take the TLS SID plus a fixed offset, so adding them never moves an existing SID. The generator fails if the base SIDs ever reach the twin range.
+*   Every rule carries `protocol tls|quic|dns` in its metadata.
+
 ---
 
 ## Local Setup
