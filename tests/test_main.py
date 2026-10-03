@@ -50,8 +50,8 @@ class TestOrchestratorIntegration:
         orchestrator.process_categories(config)
         rules = orchestrator.category_rules["MixedCat"]
 
-        # 2 non-full domains * 2 rules each = 4
-        assert len(rules) == 4
+        # 2 non-full domains * 2 rules each * 3 protocols (tls, quic, dns) = 12
+        assert len(rules) == 12
         assert any("feed-domain.com" in r for r in rules)
         assert any("manual-domain.com" in r for r in rules)
         assert any("EntityFromFeed" in r for r in rules)
@@ -81,8 +81,8 @@ class TestOrchestratorIntegration:
         rules = orchestrator.category_rules["DupCat"]
 
         # Feed is processed before manual domains within a category
-        # 1 deduplicated non-full domain * 2 rules = 2
-        assert len(rules) == 2
+        # 1 deduplicated non-full domain * 2 rules * 3 protocols = 6
+        assert len(rules) == 6
         assert all("EntityFromFeed" in r for r in rules)
         assert all("ManualEnt" not in r for r in rules)
 
@@ -104,8 +104,8 @@ class TestOrchestratorIntegration:
 
         orchestrator.process_categories(config)
         rules = orchestrator.category_rules["MultiProv"]
-        # 2 non-full domains * 2 rules each = 4
-        assert len(rules) == 4
+        # 2 non-full domains * 2 rules each * 3 protocols (tls, quic, dns) = 12
+        assert len(rules) == 12
         assert any("d1.com" in r for r in rules)
         assert any("d2.com" in r for r in rules)
 
