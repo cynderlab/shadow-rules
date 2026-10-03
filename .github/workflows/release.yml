@@ -31,6 +31,16 @@ jobs:
       - name: Generate Rules
         run: python main.py
 
+      # suricata-update fetches "<url>.md5" and skips the download when it
+      # matches its cached copy. It compares the whole stripped body against
+      # the MD5 hex digest, so the file must hold the bare digest only.
+      - name: Write checksums
+        run: |
+          set -euo pipefail
+          for f in rules/*.rules; do
+            md5sum "$f" | cut -d' ' -f1 > "$f.md5"
+          done
+
       - name: Create Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -43,12 +53,14 @@ jobs:
             echo "No rules/*.rules generated" >&2
             exit 1
           fi
+          files+=(rules/*.rules.md5)
 
           notes='Automated release of Suricata shadow-it rules.
 
           Included files:
           - Individual category files
-          - `all_shadow_rules.rules` (combined)'
+          - `all_shadow_rules.rules` (combined)
+          - `.md5` next to each file, for suricata-update'
 
           # CLI instead of action-gh-release (Node 20 / Unicorn HTML on 500s).
           publish() {
