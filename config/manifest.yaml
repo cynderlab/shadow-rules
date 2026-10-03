@@ -18,3 +18,6 @@ include:
   #################################################
   - custom/insecure_protocols.yaml
   - custom/industrial_protocols.yaml
+  # Kept last on purpose: SIDs are assigned in manifest order, so appending
+  # a category never moves the SIDs of the ones above.
+  - feeds/encrypted_dns.yaml
