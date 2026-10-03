@@ -136,3 +136,27 @@ class TestLoadConfig:
         assert len(result) > 0
         for cat in result:
             assert isinstance(cat, CategoryConfig)
+
+    def test_real_manifest_includes_encrypted_dns_last(self):
+        """Encrypted DNS is appended last so its SIDs never shift older ones."""
+        result = load_config("config/manifest.yaml")
+        assert result[-1].name == "Encrypted DNS"
+        assert result[-1].feeds[0].keys == ["category-doh"]
+
+
+class TestSidStability:
+    def test_appending_a_category_keeps_existing_rules(self):
+        """SIDs follow manifest order: a category added at the end changes nothing above it."""
+        def run(entries):
+            sid_manager = SidManager(start_sid=8000)
+            orchestrator = Orchestrator(sid_manager, MagicMock(), RuleGenerator(sid_manager))
+            orchestrator.process_categories([CategoryConfig.from_dict(e) for e in entries])
+            return orchestrator.category_rules
+
+        first = {"name": "First", "manual_domains": [{"name": "Svc", "domains": ["a.com", "full:b.com"]}]}
+        last = {"name": "Last", "manual_domains": [{"name": "Doh", "domains": ["dns.example"]}]}
+
+        before = run([first])
+        after = run([first, last])
+        assert after["First"] == before["First"]
+        assert len(after["Last"]) == 6

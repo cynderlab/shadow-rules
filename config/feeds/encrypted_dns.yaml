@@ -1,0 +1,8 @@
+name: "Encrypted DNS"
+# DNS over HTTPS/TLS resolvers that bypass the network's own DNS (filtering,
+# logging, split-horizon). Browsers enable DoH by default in many setups, so
+# this is an audit finding, not a sign of malice.
+severity: 3
+feeds:
+  v2fly:
+    - category-doh
